@@ -5,44 +5,89 @@ import io
 import zipfile
 from bs4 import BeautifulSoup
 
-# 设置页面
-st.set_page_config(page_title="flomo 迁移助手", page_icon="📦")
+# --- 页面配置 ---
+st.set_page_config(
+    page_title="flomo 2 Any - 优雅的笔记迁移工具",
+    page_icon="🍃",
+    layout="centered"
+)
 
+# --- 自定义 CSS 样式 ---
+st.markdown("""
+    <style>
+    /* 调整大标题样式 */
+    .main-title {
+        font-size: 2.5rem;
+        font-weight: 800;
+        color: #2D3436;
+        margin-bottom: 0.5rem;
+    }
+    /* 副标题样式 */
+    .sub-title {
+        color: #636E72;
+        margin-bottom: 2rem;
+    }
+    /* 卡片容器样式 */
+    .stFileUploader {
+        border: 2px dashed #00B894;
+        border-radius: 12px;
+        padding: 1rem;
+    }
+    /* 按钮美化 */
+    .stButton>button {
+        width: 100%;
+        background-color: #00B894;
+        color: white;
+        border-radius: 8px;
+        border: none;
+        padding: 0.6rem;
+        font-weight: 600;
+        transition: 0.3s;
+    }
+    .stButton>button:hover {
+        background-color: #55E6C1;
+        border: none;
+        color: white;
+    }
+    /* 打赏区域样式 */
+    .donate-section {
+        background-color: #F9F9F9;
+        padding: 2rem;
+        border-radius: 15px;
+        text-align: center;
+        margin-top: 4rem;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+# --- 逻辑处理函数 ---
 def process_flomo_to_zip(html_file, resource_files):
     zip_buffer = io.BytesIO()
-    
     with zipfile.ZipFile(zip_buffer, "a", zipfile.ZIP_DEFLATED, False) as zip_file:
         soup = BeautifulSoup(html_file.read().decode('utf-8'), 'html.parser')
         memos = soup.find_all('div', class_='memo')
-        total_memos = len(memos)
+        total = len(memos)
         
-        # 1. 建立图片查找表
         image_map = {f.name: f.read() for f in resource_files}
         
-        # 2. 创建进度条占位符
         progress_bar = st.progress(0)
         status_text = st.empty()
         
         for i, memo in enumerate(memos):
-            # 更新进度条
-            percent_complete = (i + 1) / total_memos
-            progress_bar.progress(percent_complete)
-            status_text.text(f"正在处理第 {i+1}/{total_memos} 条笔记...")
+            progress_bar.progress((i + 1) / total)
+            status_text.caption(f"正在打磨第 {i+1}/{total} 篇笔记...")
             
             time_str = memo.find('div', class_='time').get_text()
             content_div = memo.find('div', class_='content')
             content_html = content_div.decode_contents()
             
-            # 图片处理
             for img_tag in content_div.find_all('img'):
                 src = img_tag.get('src', '')
                 img_name = os.path.basename(src)
                 if img_name in image_map:
-                    new_img_path = f"assets/{img_name}"
-                    zip_file.writestr(new_img_path, image_map[img_name])
-                    content_html = content_html.replace(src, new_img_path)
+                    zip_file.writestr(f"assets/{img_name}", image_map[img_name])
+                    content_html = content_html.replace(src, f"assets/{img_name}")
 
-            # 格式清洗
             md_text = content_html.replace('<p>', '').replace('</p>', '\n').replace('<br/>', '\n')
             md_text = re.sub(r'<strong>(.*?)</strong>', r'**\1**', md_text)
             md_text = re.sub(r'\[\[(.*?)\]\]', r'[[\1]]', md_text)
@@ -53,34 +98,58 @@ def process_flomo_to_zip(html_file, resource_files):
             md_content = f"---\ntitle: {time_str}\ndate: {time_str}\nsource: flomo\n---\n\n{md_text.strip()}"
             zip_file.writestr(file_name, md_content)
             
-        status_text.text("✅ 所有笔记处理完成！正在生成压缩包...")
-            
     return zip_buffer.getvalue()
 
-# --- Streamlit UI ---
-st.title("📦 flomo 全能迁移工具")
+# --- 主界面 ---
+st.markdown('<p class="main-title">🍃 flomo 2 Any</p>', unsafe_allow_html=True)
+st.markdown('<p class="sub-title">让碎片灵感重获新生。支持一键导出 Markdown，自动本地化图片。</p>', unsafe_allow_html=True)
 
-# 产品经理建议：增加醒目的风险提示和引导
-st.info("💡 **温馨提示**：若您的笔记中图片较多，上传过程可能较慢。上传完成后点击转换，请耐心等待进度条走完。")
-
+# 侧边栏
 with st.sidebar:
-    st.header("使用说明")
-    st.write("1. 上传 flomo 导出的 `index.html`。")
-    st.write("2. 全选并上传 `resource` 文件夹内的图片。")
-    st.write("3. 点击下方按钮，系统将自动打包图片至 `assets` 目录并修正链接。")
+    st.image("https://flomoapp.com/static/img/logo.png", width=100)
+    st.title("使用指南")
+    st.markdown("""
+    1. **导出**：在 flomo 网页端导出 HTML。
+    2. **上传**：将 `index.html` 和 `resource` 文件夹图片上传。
+    3. **迁移**：解压后的文件夹直接拖入 **思源笔记** 或 **飞书**。
+    """)
+    st.divider()
+    st.caption("v2.0 | Designed with ❤️ for Note-takers")
 
-html_upload = st.file_uploader("1. 上传 index.html", type="html")
-img_uploads = st.file_uploader("2. 上传 resource 文件夹内的图片（可多选）", accept_multiple_files=True)
+# 上传容器
+with st.container():
+    col1, col2 = st.columns(2)
+    with col1:
+        html_upload = st.file_uploader("📂 1. 上传 index.html", type="html")
+    with col2:
+        img_uploads = st.file_uploader("🖼️ 2. 上传资源图片", accept_multiple_files=True)
+
+st.write("") # 间距
 
 if html_upload:
-    if st.button("🚀 开始转换并打包"):
+    if st.button("🚀 开始优雅地转换"):
         resources = img_uploads if img_uploads else []
         zip_data = process_flomo_to_zip(html_upload, resources)
-        
-        st.balloons() # 成功的仪式感：撒花
+        st.balloons()
+        st.success("转换已就绪！")
         st.download_button(
-            label="📥 点击下载转换后的笔记包 (ZIP)",
+            label="💾 下载转换后的 ZIP 包",
             data=zip_data,
-            file_name="flomo_export_ready.zip",
+            file_name="flomo_export.zip",
             mime="application/zip"
         )
+
+# --- 打赏区域 ---
+st.markdown('<div class="donate-section">', unsafe_allow_html=True)
+st.markdown("### ☕ 请作者喝杯咖啡")
+st.write("如果你觉得这个工具帮到了你，欢迎打赏支持我的后续开发！")
+
+# 这里使用两列来放置微信和支付宝的二维码
+d_col1, d_col2 = st.columns(2)
+with d_col1:
+    # 请将图片 URL 替换为你自己的二维码图床链接
+    st.image("https://your-image-host.com/wechat-qr.png", caption="微信打赏", width=180)
+with d_col2:
+    st.image("https://your-image-host.com/alipay-qr.png", caption="支付宝打赏", width=180)
+
+st.markdown('</div>', unsafe_allow_html=True)
