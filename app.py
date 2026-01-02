@@ -139,17 +139,21 @@ if html_upload:
             mime="application/zip"
         )
 
-# --- 打赏区域 ---
-st.markdown('<div class="donate-section">', unsafe_allow_html=True)
-st.markdown("### ☕ 请作者喝杯咖啡")
-st.write("如果你觉得这个工具帮到了你，欢迎打赏支持我的后续开发！")
-
-# 这里使用两列来放置微信和支付宝的二维码
-d_col1, d_col2 = st.columns(2)
-with d_col1:
-    # 请将图片 URL 替换为你自己的二维码图床链接
-    st.image("https://your-image-host.com/wechat-qr.png", caption="微信打赏", width=180)
-with d_col2:
-    st.image("https://your-image-host.com/alipay-qr.png", caption="支付宝打赏", width=180)
-
-st.markdown('</div>', unsafe_allow_html=True)
+# --- 打赏区域（仅在成功后显示） ---
+if success_trigger:
+    st.markdown("""
+        <div class="donate-card">
+            <h3 style='color: #2D3436;'>☕ 请作者喝杯咖啡</h3>
+            <p class="donate-text">看到你的灵感重获新生，我也非常开心。<br>如果这个工具为你节省了时间，欢迎支持！</p>
+            <p style='color: #B2BEC3; font-size: 0.75rem; margin-bottom: 1rem;'>本工具为纯前端处理，您的笔记不会上传到任何服务器</p>
+        </div>
+    """, unsafe_allow_html=True)
+    
+    # 打赏二维码排列
+    d_col1, d_col2 = st.columns(2)
+    with d_col1:
+        # 微信支付（已替换为你的 Raw 链接）
+        st.image("https://raw.githubusercontent.com/78tyih/Flomo2md/main/WechatPay.png", caption="微信支付", use_container_width=True)
+    with d_col2:
+        # 支付宝支付（请确保你仓库里也有这张图，如果没有，可以先注释掉或上传同名文件）
+        st.image("https://raw.githubusercontent.com/78tyih/Flomo2md/main/AlipayPay.png", caption="支付宝支付", use_container_width=True)
